@@ -1,63 +1,121 @@
 <script lang="ts">
-    import { readable } from 'svelte/store';
+    import { onMount, onDestroy } from 'svelte';
+    import { db } from '../firebase';
+    import dayjs from 'dayjs';
+    import { getDocs, collection, onSnapshot, addDoc, Timestamp, orderBy, query } from 'firebase/firestore';
 
-    let count = 0;
+    let name = 'Anonymous';
+    let message: string;
+    let messages = [];
 
-    function addOneToCount() {
-        count++;
+    let scrollTo;
+    let barHeight;
+
+    interface Message {
+        name: string;
+        message: string;
+        createdAt: number;
     }
 
-    const formatter = new Intl.DateTimeFormat('en', {
-        hour12: true,
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit'
+    onMount(async () => {
+        let docs = await getDocs(query(collection(db, 'messages'), orderBy('createdAt', 'asc')));
+
+        docs.forEach((doc) => {
+            messages = [...messages, doc.data()];
+        });
+
+        const unsubscribe = onSnapshot(collection(db, 'messages'), (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === 'added' && snapshot.size != messages.length) {
+
+                    messages = [...messages, change.doc.data() as Message];
+
+                    setTimeout(() => {
+                        document.getElementById('scroll-to').scrollIntoView({ behavior: 'smooth' });
+                    }, 100);
+                }
+            });
+        });
+
+        setTimeout(() => {
+            document.getElementById('scroll-to').scrollIntoView({ behavior: 'smooth' });
+            
+        }, 100);
     });
 
-    const time = readable(new Date(), function start(set) {
-        const interval = setInterval(() => {
-            set(new Date());
-        }, 1000);
+    async function sendText() {
+        let savedName = name || 'Anonymous';
 
-        return function stop() {
-            clearInterval(interval);
-        };
-    });
+        await addDoc(collection(db, 'messages'), {
+            name: savedName,
+            message,
+            createdAt: Timestamp.now()
+        });
+
+        message = "";
+    }
+
+    $: watchMessages = messages;
 </script>
 
-<div class="flex flex-col justify-around items-center dark:bg-gray-900 dark:text-white leading-loose h-screen pb-24">
-    <span class="text-9xl font-bold mb-10"
-        >Hello <br />
-        <a href="https://kit.svelte.dev" target="_blank"
-            ><span id="sveltekit" class="bg-clip-text bg-gradient-to-r text-transparent">SvelteKit</span></a>
-        <br />
-        <a href="https://tailwindcss.com" target="_blank"
-            ><span id="tailwind" class="bg-clip-text bg-gradient-to-r text-transparent">Tailwind</span></a
-        >!</span>
+<div id='massive-container' class="flex flex-col justify-between">
 
-    <h1 class="text-2xl">The local time is {formatter.format($time)}</h1>
+<div id="chatbox" class="p-5 h-[77.5vh] overflow-y-auto overflow-x-hidden">
+    {#each watchMessages as m}
+        <div class="message-container w-full mb-6">
+            <span class="separator relative min-w-full" />
 
-    <button
-        class="relative inline-flex items-center justify-center p-0.5 mb-2 mr-2 mt-5 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-purple-500 to-pink-500 group-hover:from-purple-500 group-hover:to-pink-500 hover:text-white dark:text-white focus:ring-4 focus:ring-purple-200 dark:focus:ring-purple-800 outline-none"
-        on:click={addOneToCount}>
-        <span
-            class="relative px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-opacity-0">
-            Clicked {count}
-            {count > 1 ? 'times' : 'time'}
-        </span>
-    </button>
+            <style lang="postcss">
+                .separator::before {
+                    @apply border-slate-500 bg-slate-500 border-[1px];
+                    @apply rounded-lg;
+                    @apply absolute h-0 p-0 top-[-.2rem];
 
-    <span> Click on the text to learn more about each technology </span>
+                    content: '';
+                    width: calc(100vw - 1.25rem * 2);
+                }
+            </style>
+
+            <span class="flex flex-row justify-start items-baseline mb-1">
+                <h1 class="mr-4 font-bold text-xl">{m.name}</h1>
+                <p class="text-slate-600 text-xs">{dayjs(m.createdAt.toDate()).format('MMMM D, YYYY hh:mm A')}</p>
+            </span>
+
+            <span>
+                <p>{m.message}</p>
+            </span>
+        </div>
+    {/each}
+<span id="scroll-to" bind:this={scrollTo} />
+
 </div>
 
-<style lang="postcss">
-    #sveltekit {
-        @apply cursor-pointer;
-        @apply from-[#FE5858] via-[#FC9842] to-[#eb9927];
-    }
 
-    #tailwind {
-        @apply cursor-pointer;
-        @apply from-green-400 via-blue-500 to-indigo-500;
-    }
-</style>
+<div
+    id="text-bar"
+    class="bg-slate-400 p-4 flex flex-col justify-between items-center w-screen"
+    bind:clientHeight={barHeight}>
+    <div id="nickname-bar" class="w-full px-1 text-slate-100">
+        Nickname: <strong>{name}</strong>
+
+        <br />
+        <input type="text" placeholder="Change nickname" bind:value={name} class="mt-1 p-1 rounded-md text-black" />
+
+        <!-- <button class="bg-blue-900 text-white rounded-md p-1 ml-2" on:click={changeNickname}>Change Nickname</button> -->
+    </div>
+
+    <div id="input-container" class="flex flex-row justify-between items-center w-full">
+        <textarea
+            type="text"
+            placeholder="Type your text here!"
+            wrap="hard"
+            cols="1"
+            bind:value={message}
+            class="w-full rounded-md p-2 m-1"
+            style="resize: none;" />
+
+        <button class="bg-blue-900 text-white rounded-md p-2 m-2" on:click={sendText}> Send </button>
+    </div>
+</div>
+
+</div>
