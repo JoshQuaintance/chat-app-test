@@ -27,7 +27,6 @@
         const unsubscribe = onSnapshot(collection(db, 'messages'), (snapshot) => {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added' && snapshot.size != messages.length) {
-
                     messages = [...messages, change.doc.data() as Message];
 
                     setTimeout(() => {
@@ -39,7 +38,6 @@
 
         setTimeout(() => {
             document.getElementById('scroll-to').scrollIntoView({ behavior: 'smooth' });
-            
         }, 100);
     });
 
@@ -52,70 +50,66 @@
             createdAt: Timestamp.now()
         });
 
-        message = "";
+        message = '';
     }
 
     $: watchMessages = messages;
 </script>
 
-<div id='massive-container' class="flex flex-col justify-between">
+<div id="massive-container" class="flex flex-col justify-between">
+    <div id="chatbox" class="p-5 h-[77.5vh] overflow-y-auto overflow-x-hidden">
+        {#each watchMessages as m}
+            <div class="message-container w-full mb-6">
+                <span class="separator relative min-w-full" />
 
-<div id="chatbox" class="p-5 h-[77.5vh] overflow-y-auto overflow-x-hidden">
-    {#each watchMessages as m}
-        <div class="message-container w-full mb-6">
-            <span class="separator relative min-w-full" />
+                <style lang="postcss">
+                    .separator::before {
+                        @apply border-slate-500 bg-slate-500 border-[1px];
+                        @apply rounded-lg;
+                        @apply absolute h-0 p-0 top-[-.2rem];
 
-            <style lang="postcss">
-                .separator::before {
-                    @apply border-slate-500 bg-slate-500 border-[1px];
-                    @apply rounded-lg;
-                    @apply absolute h-0 p-0 top-[-.2rem];
+                        content: '';
+                        width: calc(100vw - 1.25rem * 2);
+                    }
+                </style>
 
-                    content: '';
-                    width: calc(100vw - 1.25rem * 2);
-                }
-            </style>
+                <span class="flex flex-row justify-start items-baseline mb-1">
+                    <h1 class="mr-4 font-bold text-xl">{m.name}</h1>
+                    <p class="text-slate-600 text-xs">{dayjs(m.createdAt.toDate()).format('MMMM D, YYYY hh:mm A')}</p>
+                </span>
 
-            <span class="flex flex-row justify-start items-baseline mb-1">
-                <h1 class="mr-4 font-bold text-xl">{m.name}</h1>
-                <p class="text-slate-600 text-xs">{dayjs(m.createdAt.toDate()).format('MMMM D, YYYY hh:mm A')}</p>
-            </span>
+                <span>
+                    <p>{m.message}</p>
+                </span>
+            </div>
+        {/each}
+        <span id="scroll-to" bind:this={scrollTo} />
+    </div>
 
-            <span>
-                <p>{m.message}</p>
-            </span>
+    <div
+        id="text-bar"
+        class="bg-slate-400 p-4 flex flex-col justify-between items-center w-screen"
+        bind:clientHeight={barHeight}>
+        <div id="nickname-bar" class="w-full px-1 text-slate-100">
+            Nickname: <strong>{name}</strong>
+
+            <br />
+            <input type="text" placeholder="Change nickname" bind:value={name} class="mt-1 p-1 rounded-md text-black" />
+
+            <!-- <button class="bg-blue-900 text-white rounded-md p-1 ml-2" on:click={changeNickname}>Change Nickname</button> -->
         </div>
-    {/each}
-<span id="scroll-to" bind:this={scrollTo} />
 
-</div>
+        <div id="input-container" class="flex flex-row justify-between items-center w-full">
+            <textarea
+                type="text"
+                placeholder="Type your text here!"
+                wrap="hard"
+                cols="1"
+                bind:value={message}
+                class="w-full rounded-md p-2 m-1"
+                style="resize: none;" />
 
-
-<div
-    id="text-bar"
-    class="bg-slate-400 p-4 flex flex-col justify-between items-center w-screen"
-    bind:clientHeight={barHeight}>
-    <div id="nickname-bar" class="w-full px-1 text-slate-100">
-        Nickname: <strong>{name}</strong>
-
-        <br />
-        <input type="text" placeholder="Change nickname" bind:value={name} class="mt-1 p-1 rounded-md text-black" />
-
-        <!-- <button class="bg-blue-900 text-white rounded-md p-1 ml-2" on:click={changeNickname}>Change Nickname</button> -->
+            <button class="bg-blue-900 text-white rounded-md p-2 m-2" on:click={sendText}> Send </button>
+        </div>
     </div>
-
-    <div id="input-container" class="flex flex-row justify-between items-center w-full">
-        <textarea
-            type="text"
-            placeholder="Type your text here!"
-            wrap="hard"
-            cols="1"
-            bind:value={message}
-            class="w-full rounded-md p-2 m-1"
-            style="resize: none;" />
-
-        <button class="bg-blue-900 text-white rounded-md p-2 m-2" on:click={sendText}> Send </button>
-    </div>
-</div>
-
 </div>
