@@ -41,16 +41,28 @@
         }, 100);
     });
 
+
+    let timer = 0;
+
     async function sendText() {
         let savedName = name || 'Anonymous';
 
         if (message == '') return;
 
-        await addDoc(collection(db, 'messages'), {
-            name: savedName,
-            message,
-            createdAt: Timestamp.now()
-        });
+        async function sendRequest() {
+            await addDoc(collection(db, 'messages'), {
+                name: savedName,
+                message,
+                createdAt: Timestamp.now()
+            });
+
+            timer = 10;
+        }
+
+        setInterval(() => {
+            if (timer > 0) timer--
+        }, 1000)
+
 
         message = '';
     }
