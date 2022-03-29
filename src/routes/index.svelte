@@ -44,6 +44,8 @@
     async function sendText() {
         let savedName = name || 'Anonymous';
 
+        if (message == '') return;
+
         await addDoc(collection(db, 'messages'), {
             name: savedName,
             message,
