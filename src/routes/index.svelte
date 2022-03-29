@@ -63,6 +63,9 @@
             if (timer > 0) timer--
         }, 1000)
 
+        if (timer == 0) sendRequest
+        else alert("Dum Dum, You got timed out!")
+
 
         message = '';
     }
